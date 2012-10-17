@@ -24,6 +24,7 @@ class sly_Core {
 	private $errorHandler;     ///< sly_ErrorHandler
 	private $response;         ///< sly_Response
 	private $flashMessage;     ///< sly_Util_FlashMessage
+	private $session;          ///< sly_Session
 
 	// Use the following constants when you don't have access to the real
 	// config values (i.e. when in setup mode). They should map the values
@@ -398,6 +399,26 @@ class sly_Core {
 	}
 
 	/**
+	 * @param sly_Session $session  the new session instance
+	 */
+	public static function setSession(sly_Session $session) {
+		self::getInstance()->session = $session;
+	}
+
+	/**
+	 * @return sly_Session  the current session
+	 */
+	public static function getSession() {
+		$self = self::getInstance();
+
+		if (!$self->session) {
+			$self->session = new sly_Session($self->configuration->get('INSTNAME'));
+		}
+
+		return $self->session;
+	}
+
+	/**
 	 * Returns the flash message
 	 *
 	 * An existing message is removed upon first call from session, so the
@@ -412,8 +433,10 @@ class sly_Core {
 		if (!$instance->flashMessage) {
 			sly_Util_Session::start();
 
-			$msg = sly_Util_FlashMessage::readFromSession('sally');
-			$msg->removeFromSession();
+			$session = self::getSession();
+			$msg     = sly_Util_FlashMessage::readFromSession('sally', $session);
+
+			$msg->removeFromSession($session);
 			$msg->setAutoStore(true);
 
 			$instance->flashMessage = $msg;
