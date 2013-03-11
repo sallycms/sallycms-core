@@ -25,12 +25,13 @@ class sly_Container implements ArrayAccess, Countable {
 			'sly-current-lang-id'    => null,
 
 			// needed variables
-			'sly-config-dir'  => array($this, 'missingValue'),
 			'sly-classloader' => array($this, 'missingValue'),
 			'sly-environment' => array($this, 'missingValue'),
 
 			// core objects
 			'sly-config'              => array($this, 'buildConfig'),
+			'sly-config-reader'       => array($this, 'buildConfigHandler'),
+			'sly-config-writer'       => array($this, 'get', array('sly-config-reader')),
 			'sly-dispatcher'          => array($this, 'buildDispatcher'),
 			'sly-error-handler'       => array($this, 'buildErrorHandler'),
 			'sly-registry-temp'       => array($this, 'buildTempRegistry'),
@@ -59,7 +60,10 @@ class sly_Container implements ArrayAccess, Countable {
 			'sly-service-package-vendor' => array($this, 'buildVendorPackageService'),
 			'sly-service-slice'          => array($this, 'buildSliceService'),
 			'sly-service-template'       => array($this, 'buildTemplateService'),
-			'sly-service-user'           => array($this, 'buildUserService')
+			'sly-service-user'           => array($this, 'buildUserService'),
+
+			// helpers
+			'sly-slice-renderer'         => array($this, 'buildSliceRenderer')
 		), $values);
 	}
 
@@ -562,10 +566,17 @@ class sly_Container implements ArrayAccess, Countable {
 	/*          factory methods          */
 
 	/**
-	 * @return sly_Configuration
+	 * @return sly_Configuration_Reader_DatabaseImpl
 	 */
-	protected function buildConfig(sly_Container $container) {
-		return $this['sly-config'] = new sly_Configuration($this->getService('File_YAML'), $container['sly-config-dir']);
+	protected function buildConfig() {
+		return $this['sly-config'] = new sly_Configuration();
+	}
+
+	/**
+	 * @return sly_Configuration_Reader_DatabaseImpl
+	 */
+	protected function buildConfigHandler() {
+		return $this['sly-config-reader'] = new sly_Configuration_DatabaseImpl();
 	}
 
 	/**
@@ -621,7 +632,7 @@ class sly_Container implements ArrayAccess, Countable {
 	 * @return sly_Session
 	 */
 	protected function buildSession(sly_Container $container) {
-		return $this['sly-session'] = new sly_Session($container->get('sly-config')->get('INSTNAME'));
+		return $this['sly-session'] = new sly_Session($container->get('sly-config')->get('instname'));
 	}
 
 	/**
@@ -629,12 +640,12 @@ class sly_Container implements ArrayAccess, Countable {
 	 * @return sly_DB_PDO_Persistence
 	 */
 	protected function buildPersistence(sly_Container $container) {
-		$config = $container['sly-config']->get('DATABASE');
+		$config = $container['sly-config']->get('database');
 
 		// TODO: to support the iterator inside the persistence, we need to create
 		// a fresh instance for every access. We should refactor the database access
 		// to allow for a single persistence instance.
-		return new sly_DB_PDO_Persistence($config['DRIVER'], $config['HOST'], $config['LOGIN'], $config['PASSWORD'], $config['NAME'], $config['TABLE_PREFIX']);
+		return new sly_DB_PDO_Persistence($config['driver'], $config['host'], $config['login'], $config['password'], $config['name'], $config['table_prefix']);
 	}
 
 	/**
@@ -643,8 +654,8 @@ class sly_Container implements ArrayAccess, Countable {
 	 */
 	protected function buildCache(sly_Container $container) {
 		$config   = $container['sly-config'];
-		$strategy = $config->get('CACHING_STRATEGY');
-		$fallback = $config->get('FALLBACK_CACHING_STRATEGY', 'sly_Cache_Blackhole');
+		$strategy = $config->get('caching_strategy');
+		$fallback = $config->get('fallback_caching_strategy', 'sly_Cache_Blackhole');
 
 		return $this['sly-cache'] = sly_Cache::factory($strategy, $fallback);
 	}
@@ -868,6 +879,15 @@ class sly_Container implements ArrayAccess, Countable {
 		$persistence = $container['sly-persistence'];
 
 		return $this->values['sly-service-user'] = new sly_Service_User($persistence, $cache, $dispatcher, $config);
+	}
+
+	/**
+	 *
+	 * @param sly_Container $container
+	 * @return sly_Slice_Renderer
+	 */
+	protected function buildSliceRenderer(sly_Container $container) {
+		return $this->values['sly-slice-renderer'] = new sly_Slice_RendererImpl($container['sly-service-module']);
 	}
 
 	protected function missingValue(sly_Container $container, $id) {

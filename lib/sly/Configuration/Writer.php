@@ -9,10 +9,12 @@
  */
 
 /**
- * @since  0.9
- * @author zozi@webvariants.de
+ * System Configuration Writer Interface
+ *
+ * @ingroup core
  */
-interface sly_Slice_Renderer {
-	public function renderInput($moduleName, $values, $dataIndex);
-	public function renderOutput(sly_Model_ISlice $slice);
+interface sly_Configuration_Writer {
+	public function writeProject(array $data);
+	public function writeLocal(array $data);
 }
+

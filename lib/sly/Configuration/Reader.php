@@ -9,10 +9,11 @@
  */
 
 /**
- * @since  0.9
- * @author zozi@webvariants.de
+ * System Configuration Reader Interface
+ *
+ * @ingroup core
  */
-interface sly_Slice_Renderer {
-	public function renderInput($moduleName, $values, $dataIndex);
-	public function renderOutput(sly_Model_ISlice $slice);
+interface sly_Configuration_Reader {
+	public function readProject();
+	public function readLocal();
 }
